@@ -28,20 +28,16 @@ urlpatterns = [
         name='delete_post'
     ),
     path(
-        'posts/create',
+        'posts/create/',
         views.post_create,
         name='create_post'
     ),
     path(
-        'profile/<slug:username>',
-        views.profile,
-        name='profile'
-    ),
-    path(
-        'profile/',
+        'edit_profile/',
         views.ProfileUpdateView.as_view(),
         name='edit_profile'
     ),
+    path('profile/<str:username>/', views.profile, name='profile'),
     path(
         'posts/<int:post_id>/comment/',
         views.add_comment,
