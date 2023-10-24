@@ -110,7 +110,6 @@ class Post(PublishedCreatedFieldsAddModel):
         return reverse('blog:post_detail', kwargs={'post_id': self.pk})
 
 
-
 class Comment(models.Model):
     text = models.TextField('Комментарий')
     post = models.ForeignKey(
