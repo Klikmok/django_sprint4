@@ -203,7 +203,7 @@ def profile(request, username):
             author=author,
         ).order_by('-pub_date')
     posts_queryset = posts_queryset.annotate(
-            comment_count=Count('comments')
+        comment_count=Count('comments')
     )
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')

@@ -1,7 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.urls import reverse
-from django.shortcuts import get_object_or_404
 
 from .constants import TITLE_MAX_LENGTH
 
