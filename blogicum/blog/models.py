@@ -1,7 +1,22 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.urls import reverse
-TITLE_MAX_LENGTH = 30
+from django.shortcuts import get_object_or_404
+
+from .constants import TITLE_MAX_LENGTH
+
+
+# Я не нашел способа получения kwargs для менеджера,
+# поэтому не реализовал идею с ними.
+
+# class PostObjManager(models.Manager):
+#     def get_queryset(self):
+#         return get_object_or_404(
+#             Post,
+#             pk=kwargs['post_id'],
+#             is_published=True,
+#             author=self.request.user,
+#         )
 
 
 class PublishedCreatedFieldsAddModel(models.Model):
@@ -10,11 +25,11 @@ class PublishedCreatedFieldsAddModel(models.Model):
         default=True,
         help_text=(
             'Снимите галочку, чтобы скрыть публикацию.'
-        )
+        ),
     )
     created_at = models.DateTimeField(
         'Добавлено',
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     class Meta:
@@ -24,7 +39,7 @@ class PublishedCreatedFieldsAddModel(models.Model):
 class Category(PublishedCreatedFieldsAddModel):
     title = models.CharField(
         'Заголовок',
-        max_length=256
+        max_length=256,
     )
     description = models.TextField('Описание')
     slug = models.SlugField(
@@ -33,7 +48,7 @@ class Category(PublishedCreatedFieldsAddModel):
         help_text=(
             'Идентификатор страницы для URL; разрешены символы латиницы, '
             'цифры, дефис и подчёркивание.'
-        )
+        ),
     )
 
     class Meta:
@@ -47,7 +62,7 @@ class Category(PublishedCreatedFieldsAddModel):
 class Location (PublishedCreatedFieldsAddModel):
     name = models.CharField(
         'Название места',
-        max_length=256
+        max_length=256,
     )
 
     class Meta:
@@ -61,7 +76,7 @@ class Location (PublishedCreatedFieldsAddModel):
 class Post(PublishedCreatedFieldsAddModel):
     title = models.CharField(
         'Заголовок',
-        max_length=256
+        max_length=256,
     )
 
     text = models.TextField('Текст')
@@ -76,25 +91,25 @@ class Post(PublishedCreatedFieldsAddModel):
         User,
         on_delete=models.CASCADE,
         related_query_name="author",
-        verbose_name='Автор публикации'
+        verbose_name='Автор публикации',
     )
     location = models.ForeignKey(
         Location,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name='Местоположение'
+        verbose_name='Местоположение',
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        verbose_name='Категория'
+        verbose_name='Категория',
     )
     image = models.ImageField(
         'Изображение',
         upload_to='post_images',
-        blank=True
+        blank=True,
     )
 
     class Meta:
@@ -124,5 +139,7 @@ class Comment(models.Model):
         ordering = ('created_at',)
 
     def __str__(self):
-        return (f'{self.post} ({self.author}) "'
-                f'{self.text[:TITLE_MAX_LENGTH]}"')
+        return (
+            f'{self.post} ({self.author}) '
+            f'{self.text[:TITLE_MAX_LENGTH]}'
+        )

@@ -52,5 +52,5 @@ urlpatterns = [
         'posts/<int:post_id>/delete_comment/<int:comment_id>/',
         views.CommentDeleteView.as_view(),
         name='delete_comment'
-    )
+    ),
 ]

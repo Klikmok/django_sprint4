@@ -8,6 +8,7 @@ class PostAdmin(admin.ModelAdmin):
 
 
 admin.site.empty_value_display = 'Не задано'
+
 admin.site.register(Category)
 admin.site.register(Location)
 admin.site.register(Post, PostAdmin)
