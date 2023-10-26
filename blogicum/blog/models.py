@@ -5,19 +5,6 @@ from django.urls import reverse
 from .constants import TITLE_MAX_LENGTH
 
 
-# Я не нашел способа получения kwargs для менеджера,
-# поэтому не реализовал идею с ними.
-
-# class PostObjManager(models.Manager):
-#     def get_queryset(self):
-#         return get_object_or_404(
-#             Post,
-#             pk=kwargs['post_id'],
-#             is_published=True,
-#             author=self.request.user,
-#         )
-
-
 class PublishedCreatedFieldsAddModel(models.Model):
     is_published = models.BooleanField(
         'Опубликовано',

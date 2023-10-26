@@ -1,6 +1,5 @@
 """Импорт функций, форм и моделей."""
 from django.http import HttpResponseRedirect
-from django.utils import timezone
 from django.db.models import Count
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
@@ -12,21 +11,48 @@ from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
 
+from .constants import POSTS_ON_PAGE, now
 from .forms import PostForm, CommentForm, UserForm
 from .models import Post, Category, Comment
-from .constants import POSTS_ON_PAGE
+
 
 User = get_user_model()
 
 
-def index(request):
-    """Вью функция главной страницы."""
-    posts_queryset = Post.objects.annotate(
+def get_comment_object(**kwargs):
+    """Получение объекта комментария."""
+    return get_object_or_404(
+        Comment,
+        pk=kwargs['comment_id'],
+        post=kwargs['post_id'],
+        post__is_published=True,
+    )
+
+
+def get_post_object(author=None):
+    """Получение объекта поста."""
+    post = Post.objects.annotate(
         comment_count=Count('comments')
     ).filter(
-        pub_date__lte=timezone.now(),
+        pub_date__lte=now,
         is_published=True, category__is_published=True,
     ).order_by('-pub_date')
+    if author:
+        post.filter(author=author)
+    return post
+
+
+def get_user_object(self):
+    """Проверка пользователя."""
+    return get_object_or_404(
+        User,
+        username=self.request.user,
+    )
+
+
+def index(request):
+    """Вью функция главной страницы."""
+    posts_queryset = get_post_object()
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -45,14 +71,9 @@ def category_posts(request, category_slug):
         slug=category_slug,
         is_published=True,
     )
-    posts_queryset = Post.objects.annotate(
-        comment_count=Count('comments')
-    ).filter(
-        pub_date__lt=timezone.now(),
-        is_published=True,
-        category__is_published=True,
-        category__slug=category_slug,
-    ).order_by('-pub_date')
+    posts_queryset = get_post_object().filter(
+        category__slug=category.slug
+    )
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -83,11 +104,13 @@ class PostDetailView(DetailView):
         post_author = super().get_object()
         if self.request.user == post_author.author:
             return post_author
-        return get_object_or_404(Post.objects.filter(
+        return get_object_or_404(
+            Post,
             is_published=True,
             category__is_published=True,
-            pub_date__lte=timezone.now(),
-        ), id=self.kwargs['post_id'])
+            pub_date__lte=now,
+            id=self.kwargs['post_id'],
+        )
 
 
 @login_required
@@ -119,12 +142,7 @@ class PostUpdateView(UpdateView):
         """Функция проверки формы."""
         if self.get_object().author != self.request.user:
             return redirect('blog:post_detail', post_id=self.kwargs['post_id'])
-        get_object_or_404(
-            Post,
-            pk=kwargs['post_id'],
-            is_published=True,
-            author=self.request.user,
-        )
+        get_post_object().filter(author=self.request.user)
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self):
@@ -156,7 +174,6 @@ class PostDeleteView(DeleteView):
         get_object_or_404(
             Post,
             pk=kwargs['post_id'],
-            is_published=True,
             author=self.request.user,
         )
         return super().dispatch(request, *args, **kwargs)
@@ -171,7 +188,7 @@ class PostDeleteView(DeleteView):
         """Функция получения адреса."""
         return reverse_lazy(
             'blog:profile',
-            kwargs={'username': self.request.user.username}
+            kwargs={'username': self.request.user}
         )
 
 
@@ -194,22 +211,16 @@ def profile(request, username):
     if author == request.user:
         posts_queryset = Post.objects.filter(
             author=author
-        ).order_by('-pub_date')
+        ).order_by('-pub_date').annotate(
+            comment_count=Count('comments')
+        )
     else:
-        posts_queryset = Post.objects.filter(
-            pub_date__lt=timezone.now(),
-            is_published=True,
-            category__is_published=True,
-            author=author,
-        ).order_by('-pub_date')
-    posts_queryset = posts_queryset.annotate(
-        comment_count=Count('comments')
-    )
+        posts_queryset = get_post_object(author)
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     profile = get_object_or_404(
-        User.objects.all(),
+        User,
         username=username,
     )
     template_name = 'blog/profile.html'
@@ -229,10 +240,7 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         """Функция проверки формы."""
-        get_object_or_404(
-            User,
-            username=self.request.user.username,
-        )
+        get_user_object(self)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -244,7 +252,7 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_object(self):
         """Получение объекта пользователя для страницы."""
-        return User.objects.get(username=self.request.user.username)
+        return get_user_object(self)
 
 
 class CommentUpdateView(LoginRequiredMixin, UpdateView):
@@ -261,12 +269,7 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
             return HttpResponseRedirect(
                 reverse('blog:post_detail', self.kwargs['post_id'])
             )
-        get_object_or_404(
-            Comment,
-            pk=kwargs['comment_id'],
-            post=kwargs['post_id'],
-            post__is_published=True,
-        )
+        get_comment_object(**kwargs)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -280,9 +283,10 @@ class CommentUpdateView(LoginRequiredMixin, UpdateView):
         """Получение объекта пользователя."""
         return get_object_or_404(
             Comment,
+            post=self.kwargs['post_id'],
             pk=self.kwargs['comment_id'],
             post__is_published=True,
-            author=User.objects.get(username=self.request.user.username),
+            author=User.objects.get(username=self.request.user),
         )
 
 
@@ -300,12 +304,7 @@ class CommentDeleteView(LoginRequiredMixin, DeleteView):
             return HttpResponseRedirect(
                 reverse('blog:post_detail', self.kwargs['post_id'])
             )
-        get_object_or_404(
-            Comment,
-            pk=kwargs['comment_id'],
-            post=kwargs['post_id'],
-            post__is_published=True,
-        )
+        get_comment_object(**kwargs)
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -319,18 +318,8 @@ class CommentDeleteView(LoginRequiredMixin, DeleteView):
         """Получение объекта пользователя."""
         return get_object_or_404(
             Comment,
+            post=self.kwargs['post_id'],
             pk=self.kwargs['comment_id'],
             post__is_published=True,
             author=User.objects.get(username=self.request.user),
         )
-
-    def get_context_data(self, **kwargs):
-        """Получение данных для страницы."""
-        context = super().get_context_data(**kwargs)
-        context['comment'] = Comment.objects.filter(
-            pk=self.kwargs['comment_id'],
-            post=self.kwargs['post_id'],
-            post__is_published=True,
-            author=self.get_object().pk,
-        )
-        return context
