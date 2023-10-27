@@ -5,18 +5,20 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import (
     DeleteView, DetailView, UpdateView
 )
+from django.utils import timezone
 from django.urls import reverse_lazy, reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
 
-from .constants import POSTS_ON_PAGE, now
+from .constants import POSTS_ON_PAGE
 from .forms import PostForm, CommentForm, UserForm
 from .models import Post, Category, Comment
 
 
 User = get_user_model()
+now = timezone.now()
 
 
 def get_comment_object(**kwargs):
@@ -72,7 +74,7 @@ def category_posts(request, category_slug):
         is_published=True,
     )
     posts_queryset = get_post_object().filter(
-        category__slug=category.slug
+        category=category.pk
     )
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')
