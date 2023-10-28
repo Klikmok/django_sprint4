@@ -18,7 +18,6 @@ from .models import Post, Category, Comment
 
 
 User = get_user_model()
-now = timezone.now()
 
 
 def get_comment_object(**kwargs):
@@ -36,7 +35,7 @@ def get_post_object(author=None):
     post = Post.objects.annotate(
         comment_count=Count('comments')
     ).filter(
-        pub_date__lte=now,
+        pub_date__lte=timezone.now(),
         is_published=True, category__is_published=True,
     ).order_by('-pub_date')
     if author:
@@ -74,7 +73,7 @@ def category_posts(request, category_slug):
         is_published=True,
     )
     posts_queryset = get_post_object().filter(
-        category=category.pk
+        category=category
     )
     paginator = Paginator(posts_queryset, POSTS_ON_PAGE)
     page_number = request.GET.get('page')
@@ -110,7 +109,7 @@ class PostDetailView(DetailView):
             Post,
             is_published=True,
             category__is_published=True,
-            pub_date__lte=now,
+            pub_date__lte=timezone.now(),
             id=self.kwargs['post_id'],
         )
 
